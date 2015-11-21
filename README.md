@@ -33,9 +33,10 @@ state: 'closed',
 id: null,
 isAuthenticated: false,
 isAuthenticating: false, //doesn't exist in socket-cluster, but could be useful for routing purposes
-authError: null,
+error: null,
 token: null,
-subscriptions: [] // not yet implemented!
+pendingSubs: [], //needs a PR from socketcluster to use automatically. for now, you must emit a `subscribeRequest`
+subs: []
 ```
 ####`reduxSocket(options)` - a HOC to put on your highest level real-time component.
 eg `@reduxSocket({authTokenName: 'MyApp.token'})`
@@ -52,8 +53,7 @@ create a token for you, create an issue with your current workflow & together we
 That's it!
 
 ###TODO
-- Add subscriptions
-- Make sure localStorage exists before grabbing the token
+- Tests!
 - Add option to create token from socket cluster
 
 

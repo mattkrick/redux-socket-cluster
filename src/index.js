@@ -1,13 +1,18 @@
 import socketCluster from 'socketcluster-client';
 import React, { Component,PropTypes } from 'react';
+import promisify from 'es6-promisify';
 
 // constants
 const CONNECT_REQUEST = "@@socketCluster/CONNECT_REQUEST";
 const CONNECT_SUCCESS = "@@socketCluster/CONNECT_SUCCESS";
-const CONNECT_ERROR = "@@socketCluster/CONNECT_ERROR"; //TODO ask about this, it's not clear in the SC API
+const CONNECT_ERROR = "@@socketCluster/CONNECT_ERROR";
 const AUTH_REQUEST = "@@socketCluster/AUTH_REQUEST";
 const AUTH_SUCCESS = "@@socketCluster/AUTH_SUCCESS";
 const AUTH_ERROR = "@@socketCluster/AUTH_ERROR";
+//https://github.com/SocketCluster/socketcluster-client/issues/25
+const SUBSCRIBE_REQUEST = "@@socketCluster/SUBSCRIBE_REQUEST";
+const SUBSCRIBE_SUCCESS = "@@socketCluster/SUBSCRIBE_SUCCESS";
+const SUBSCRIBE_ERROR = "@@socketCluster/SUBSCRIBE_ERROR";
 const DISCONNECT = "@@socketCluster/DISCONNECT";
 const DEAUTHORIZE = "@@socketCluster/DEAUTHORIZE";
 
@@ -21,7 +26,7 @@ function disconnect() {
 
 function deauthorize() {
   return {
-    type: DISCONNECT
+    type: DEAUTHORIZE
   }
 }
 function connectRequest(payload) {
@@ -38,22 +43,50 @@ function connectSuccess(payload) {
   }
 }
 
+function connectError(error) {
+  return {
+    type: CONNECT_ERROR,
+    error
+  }
+}
+
 function authRequest() {
   return {
-    type:AUTH_REQUEST
+    type: AUTH_REQUEST
   }
 }
 
 function authSuccess(payload) {
   return {
-    type:AUTH_SUCCESS,
+    type: AUTH_SUCCESS,
     payload
   }
 }
 
 function authError(error) {
   return {
-    type:AUTH_ERROR,
+    type: AUTH_ERROR,
+    error
+  }
+}
+
+function subscribeRequest() {
+  return {
+    type: SUBSCRIBE_REQUEST
+  }
+}
+
+function subscribeSuccess(payload) {
+  return {
+    type: SUBSCRIBE_SUCCESS,
+    payload
+  }
+}
+
+function subscribeError(payload,error) {
+  return {
+    type: SUBSCRIBE_ERROR,
+    payload,
     error
   }
 }
@@ -65,18 +98,19 @@ const initialState = {
   id: null,
   isAuthenticated: false,
   isAuthenticating: false,
-  authError: null,
+  error: null,
   token: null,
-  subscriptions: [] //TODO, handle subs, kickouts,
+  pendingSubs: [],
+  subs: []
 };
 
-export function socketClusterReducer(state = initialState, action) {
+const socketClusterReducer = function (state = initialState, action) {
   switch (action.type) {
     case DEAUTHORIZE:
       return Object.assign({}, state, {
         isAuthenticating: false,
         isAuthenticated: false,
-        authError: null,
+        error: null,
         token: null
       });
     case DISCONNECT:
@@ -85,7 +119,7 @@ export function socketClusterReducer(state = initialState, action) {
         id: null,
         isAuthenticating: false,
         isAuthenticated: false,
-        authError: null,
+        error: null,
         token: null
       });
     case CONNECT_REQUEST:
@@ -94,16 +128,11 @@ export function socketClusterReducer(state = initialState, action) {
         id: null,
         isAuthenticating: false,
         isAuthenticated: false,
-        authError: null
+        error: null
       });
     case CONNECT_ERROR:
       return Object.assign({}, state, {
-        state: 'closed',
-        id: null,
-        isAuthenticating: false,
-        isAuthenticated: false,
-        authError: null,
-        token: null
+        error: action.error
       });
     case CONNECT_SUCCESS:
       return Object.assign({}, state, {
@@ -111,7 +140,7 @@ export function socketClusterReducer(state = initialState, action) {
         id: action.payload.id,
         isAuthenticating: false,
         isAuthenticated: action.payload.isAuthenticated,
-        authError: action.payload.authError || null
+        error: action.payload.error || null
       });
     case AUTH_REQUEST:
       return Object.assign({}, state, {
@@ -121,14 +150,28 @@ export function socketClusterReducer(state = initialState, action) {
       return Object.assign({}, state, {
         isAuthenticating: false,
         isAuthenticated: true,
-        authError: null,
+        error: null,
         token: action.payload.token
       });
     case AUTH_ERROR:
       return Object.assign({}, state, {
         isAuthenticating: false,
         isAuthenticated: false,
-        authError: action.error
+        error: action.error
+      });
+    case SUBSCRIBE_REQUEST:
+      return Object.assign({}, state, {
+        pendingSubs: [...state.pendingSubs, action.payload.channelName]
+      });
+    case SUBSCRIBE_SUCCESS:
+      return Object.assign({}, state, {
+        pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
+        subs: [...state.subs, action.payload.channelName]
+      });
+    case SUBSCRIBE_ERROR:
+      return Object.assign({}, state, {
+        pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
+        error: action.error
       });
     default:
       return state;
@@ -136,7 +179,7 @@ export function socketClusterReducer(state = initialState, action) {
 }
 
 // HOC
-export function reduxSocket(inOptions) {
+const reduxSocket = function (inOptions) {
   return function socketClusterer(ComposedComponent) {
     return class SocketClustered extends Component {
       static contextTypes = {
@@ -153,10 +196,13 @@ export function reduxSocket(inOptions) {
         this.authLocalToken = authLocalToken;
         this.authTokenName = options.authTokenName;
         this.socket = socketCluster.connect(options);
+        console.log(this.socket);
         this.handleConnection();
         this.handleAuth();
         this.handleDisconnect();
         this.handleDeauth();
+        this.handleError();
+        this.handleSubs();
 
       }
 
@@ -165,6 +211,21 @@ export function reduxSocket(inOptions) {
           <ComposedComponent {...this.props}/>
         )
       }
+
+      handleSubs() {
+        const {dispatch} = this.context.store;
+        const {socket} = this;
+        socket.on('subscribeRequest', channelName => {
+          dispatch(subscribeRequest({channelName}))
+        })
+        socket.on('subscribe', channelName => {
+          dispatch(subscribeSuccess({channelName}))
+        })
+        socket.on('subscribeFail', (error,channelName) => {
+          dispatch(subscribeError({channelName}, error))
+        })
+      }
+
       handleDeauth() {
         const {dispatch} = this.context.store;
         const {socket} = this;
@@ -179,43 +240,62 @@ export function reduxSocket(inOptions) {
         socket.on('disconnect', () => {
           dispatch(disconnect());
         });
+        socket.transport.on('#disconnect', () => {
+          console.log("INTERNAL DISCONNECT");
+          dispatch(disconnect());
+        });
         socket.on('connectAbort', () => { //triggers while in connecting state
           dispatch(disconnect());
         });
+        setTimeout(() => {socket.disconnect()},3000);
       }
 
       handleConnection() {
         const {dispatch} = this.context.store;
         const {socket} = this;
         dispatch(connectRequest({state: socket.getState()}));
-        socket.on('connect', function (status) {
+        socket.on('connect', status => {
           dispatch(connectSuccess({
             id: status.id,
             isAuthenticated: status.isAuthenticated,
             state: 'open',
-            authError: status.authError
+            error: status.authError
           }));
         });
       }
 
-      handleAuth() {
-        //TODO: use socket.auth.loadToken instead?
+      handleError() {
+        const {dispatch} = this.context.store;
+        const {socket} = this;
+        socket.on('error', error => {
+          dispatch(connectError({
+            error
+          }))
+        })
+      }
+
+      async handleAuth() {
         const {dispatch} = this.context.store;
         const {socket, authLocalToken, authTokenName} = this;
-        if (authTokenName && authLocalToken !== false) {
-          dispatch(authRequest());
-          const token = window.localStorage.getItem(authTokenName);
-          socket.authenticate(token, (err, status) => {
-            const socketAuthError = status.authError && status.authError.message;
-            if (socketAuthError) {
-              dispatch(authError(socketAuthError));
-            }
-          });
-        }
-        socket.on('authenticate', (token) => {
+        socket.on('authenticate', token => {
           dispatch(authSuccess({token}));
         });
+        if (authTokenName && authLocalToken !== false) {
+          dispatch(authRequest());
+          const loadToken = promisify(socket.auth::socket.auth.loadToken); //https://youtrack.jetbrains.com/issue/WEB-18760
+          const authenticate = promisify(socket::socket.authenticate);
+          const token = await loadToken(authTokenName);
+          const authStatus = await authenticate(token);
+          if (authStatus.authError) {
+            dispatch(authError(authStatus.authError.message));
+          }
+        }
       }
     }
   }
 }
+
+module.exports = {
+  reduxSocket, socketClusterReducer
+};
+
