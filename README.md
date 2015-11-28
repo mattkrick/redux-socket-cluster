@@ -29,31 +29,43 @@ function reducer(state, action) {
 This initial state object looks like this:
 
 ```
-state: 'closed',
-id: null,
-isAuthenticated: false,
-isAuthenticating: false, //doesn't exist in socket-cluster, but could be useful for routing purposes
-error: null,
-token: null,
-pendingSubs: [], //needs a PR from socketcluster to use automatically. for now, you must emit a `subscribeRequest`
-subs: []
+  state: 'closed',
+  id: null,
+  isAuthenticated: false,
+  isAuthenticating: false, //not from socketCluster itself
+  lastError: null,
+  token: null,
+  //connectionError: '', //waiting on v4
+  //permissionError: '', //waiting on v4
+  //tokenError: '', //waiting on v4
+  pendingSubs: [],
+  subs: []
 ```
-####`reduxSocket(options)` - a HOC to put on your highest level real-time component.
-eg `@reduxSocket({authTokenName: 'MyApp.token'})`
+####`reduxSocket(socketClusterOptions, options)` - a HOC to put on your highest level real-time component.
+eg `@reduxSocket({authTokenName: 'MyApp.token'}, {keepAlive: 60000})`
 
 For example, if you use websockets for everything, stick this on the main `app`. If only certain components have websockets, stick this on those containers. 
-The options are identical to the options you'd pass in to the client socketCluster 
-(http://socketcluster.io/#!/docs/api-socketcluster-client) except for one additional option: `authLocalToken` (default: `true`)
-If you set this to false, then socketCluster will ignore your JWT. This is only useful if you have multiple JWTs for different
-parts of your site. Since this is an edge case, the default is true so most folks don't have to worry about it.
+The `socketClusterOptions` are identical to the options you'd pass in to the client socketCluster 
+(http://socketcluster.io/#!/docs/api-socketcluster-client).
+ 
+The `options` has only 1 property: `keepAlive`, which takes a value in milliseconds. 
+This keeps the socket connection alive after navigating away from the component.
+Say the client subs to 1000 items & accidently clicks a link that unmounts the component,
+if they make it back to the component before the time expires, you won't have to start a new connection or resend
+those 1000 documents. Plus, any docs that came in while they were away will be there too. Neat!
 
-NOTE: This setup assumes you've already given the client a token (probably via HTTP). If you'd like socket-cluster to 
+NOTES: 
+ - This setup assumes you've already given the client a token (probably via HTTP). If you'd like socket-cluster to 
 create a token for you, create an issue with your current workflow & together we can make a pretty API for that usecase.
+ - This requires a forked verison of socketcluster-client. This dependency will revert back to the original
+when v4.0 comes out.
+ - Babel is working out some bugs, so the npm dist is not available. If you're a babel wiz & know how to work around
+ the bugs (currently v6.2.4) PLEASE submit a PR & teach me!
 
 That's it!
 
 ###TODO
-- Tests!
+- Tests! 
 - Add option to create token from socket cluster
 
 
