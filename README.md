@@ -3,10 +3,12 @@ A socket-cluster state snatcher
 
 ###WIP - Thoughts & PRs welcome!
 
-Socket cluster is awesome, but the state is mishmashed all over the place. This tiny package grabs all the tasty little
-state bits & sticks em in your redux store. Then, it sets up listeners for updates to keep those state bits nice and fresh.
-This makes it super easy to do things like "Please wait, reconnecting" modals. More complex examples might be
-getting kicked off a subscription & pushing a "You got booted from the chat room. Sending you to the lobby..."
+Socket cluster is awesome, but it doesn't share it's state, so you always have to go to your stored socket to find out. 
+This tiny package grabs all the tasty little state bits & sticks em in your redux store. 
+Then, it sets up listeners for updates to keep those state bits nice and fresh.
+This makes it super easy to do things like "Please wait, reconnecting" modals without having to access the socket.
+More complex examples might be getting kicked off a subscription & pushing a 
+"You got booted from the chat room. Sending you to the lobby..."
 
 ###Installation
 
