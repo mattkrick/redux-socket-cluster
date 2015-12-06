@@ -59,8 +59,6 @@ NOTES:
 create a token for you, create an issue with your current workflow & together we can make a pretty API for that usecase.
  - This requires a forked verison of socketcluster-client. This dependency will revert back to the original
 when v4.0 comes out.
- - Babel is working out some bugs, so the npm dist is not available. If you're a babel wiz & know how to work around
- the bugs (currently v6.2.4) PLEASE submit a PR & teach me!
 
 That's it!
 

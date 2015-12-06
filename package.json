@@ -25,12 +25,12 @@
   "homepage": "https://github.com/mattkrick/redux-socket-cluster#readme",
   "devDependencies": {
     "babel-cli": "^6.2.4",
-    "babel-preset-es2015": "^6.2.4",
-    "babel-preset-react": "^6.2.4",
-    "babel-preset-stage-0": "^6.2.4"
+    "babel-preset-es2015": "^6.x.x",
+    "babel-preset-react": "^6.x.x",
+    "babel-preset-stage-0": "^6.x.x"
   },
   "dependencies": {
-    "babel-runtime": "^6.2.4",
+    "babel-runtime": "^6.x.x",
     "es6-promisify": "^3.0.0",
     "react": "^0.14.3",
     "socketcluster-client": "git://github.com/mattkrick/socketcluster-client.git#994b175db8f8f255d7b0dd72337be86348b7eb18"
