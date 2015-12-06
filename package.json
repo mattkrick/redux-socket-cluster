@@ -1,6 +1,6 @@
 {
   "name": "redux-socket-cluster",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "A socket-cluster state snatcher",
   "main": "lib/index",
   "scripts": {
@@ -36,4 +36,3 @@
     "socketcluster-client": "git://github.com/mattkrick/socketcluster-client.git#994b175db8f8f255d7b0dd72337be86348b7eb18"
   }
 }
-
