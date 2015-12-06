@@ -2,7 +2,7 @@ import socketCluster from 'socketcluster-client';
 import React, { Component,PropTypes } from 'react';
 import promisify from 'es6-promisify';
 import deepEqual from 'deep-equal';
-require('babel-runtime');
+import 'babel-runtime';
 // constants
 const CONNECT_REQUEST = "@@socketCluster/CONNECT_REQUEST";
 const CONNECT_SUCCESS = "@@socketCluster/CONNECT_SUCCESS";
