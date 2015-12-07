@@ -13,6 +13,7 @@ More complex examples might be getting kicked off a subscription & pushing a
 ###Installation
 
 `npm i -S redux-socket-cluster`
+Require `babel-polyfill` in your project somewhere. (`babel-runtime` isn't working right now)
 
 ###API
 ####`socketClusterReducer` - the reducer. 

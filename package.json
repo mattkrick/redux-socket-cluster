@@ -1,13 +1,14 @@
 {
   "name": "redux-socket-cluster",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A socket-cluster state snatcher",
   "main": "lib/index",
   "scripts": {
     "clean": "rimraf lib",
     "test": "echo \"Error: no test specified\" && exit 1",
     "compile": "babel --presets es2015,stage-0,react -d lib/ src/",
-    "prepublish": "npm run clean && npm run compile"
+    "prepublish": "npm run clean && npm run compile",
+    "start": "node lib/index"
   },
   "repository": {
     "type": "git",
@@ -32,9 +33,8 @@
     "rimraf": "^2.4.4"
   },
   "dependencies": {
-    "babel-runtime": "6.3.13",
     "es6-promisify": "^3.0.0",
     "react": "^0.14.3",
-    "socketcluster-client": "git://github.com/mattkrick/socketcluster-client.git#994b175db8f8f255d7b0dd72337be86348b7eb18"
+    "socketcluster-client": "git://github.com/mattkrick/socketcluster-client.git#90bbde5db8b26f2fba12daeacee93e29957b7c65"
   }
 }
