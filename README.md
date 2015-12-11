@@ -13,7 +13,11 @@ More complex examples might be getting kicked off a subscription & pushing a
 ###Installation
 
 `npm i -S redux-socket-cluster`
+install the custom socketcluster-client (only until v4): `git://github.com/mattkrick/socketcluster-client.git#master` 
 Require `babel-polyfill` in your project somewhere. (`babel-runtime` isn't working right now)
+Store your socket instance in a file. For example, in a `utils/socket.js` you might have
+`export default socketCluster.connect(socketOptions)`
+Then, you can import that socket connection in any client-side file.
 
 ###API
 ####`socketClusterReducer` - the reducer. 
@@ -44,18 +48,17 @@ This initial state object looks like this:
   pendingSubs: [],
   subs: []
 ```
-####`reduxSocket(socketClusterOptions, options)` - a HOC to put on your highest level real-time component.
-eg `@reduxSocket({authTokenName: 'MyApp.token'}, {keepAlive: 60000})`
+####`reduxSocket(socket, options)` - a HOC to put on your highest level real-time component.
+eg `@reduxSocket(socket, {keepAlive: 5000})`
 
-For example, if you use websockets for everything, stick this on the main `app`. If only certain components have websockets, stick this on those containers. 
-The `socketClusterOptions` are identical to the options you'd pass in to the client socketCluster 
-(http://socketcluster.io/#!/docs/api-socketcluster-client).
+For example, if you use websockets for everything, stick this on the main `app`. 
+If only certain components have websockets, stick this on those containers. 
  
 The `options` has only 1 property: `keepAlive`, which takes a value in milliseconds. 
 This keeps the socket connection alive after navigating away from the component.
-Say the client subs to 1000 items & accidently clicks a link that unmounts the component,
+Say the client subs to 1000 items & accidentally clicks a link that unmounts the component,
 if they make it back to the component before the time expires, you won't have to start a new connection or resend
-those 1000 documents. Plus, any docs that came in while they were away will be there too. Neat!
+those 1000 documents. Plus, any docs that came in while they were away will be there too. Nice!
 
 NOTES: 
  - This setup assumes you've already given the client a token (probably via HTTP). If you'd like socket-cluster to 

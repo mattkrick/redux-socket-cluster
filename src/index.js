@@ -1,4 +1,3 @@
-import socketCluster from 'socketcluster-client';
 import React, { Component,PropTypes } from 'react';
 import promisify from 'es6-promisify';
 // constants
@@ -99,7 +98,7 @@ export const socketClusterReducer = function (state = initialState, action) {
 }
 
 // HOC
-export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
+export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
   return class SocketClustered extends Component {
     static contextTypes = {
       store: React.PropTypes.object.isRequired
@@ -107,14 +106,14 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
 
     constructor(props, context) {
       super(props, context);
-      options = options || {};
+      //options = options || {};
       this.clusteredOptions = Object.assign({
         keepAlive: 5000
       }, reduxSCOptions)
     }
 
     componentWillMount() {
-      this.socket = socketCluster.connect(options);
+      this.socket = socket;
       this.authTokenName = options.authTokenName;
       if (!this.socket.__destructionCountdown) {
         this.handleConnection();
@@ -129,7 +128,7 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
     componentWillUnmount() {
       this.socket.__destructionCountdown = setTimeout(() => {
         this.socket.disconnect();
-        this.socket = socketCluster.destroy(options);
+        //this.socket = socketCluster.destroy(options);
       }, this.clusteredOptions.keepAlive)
     }
 
