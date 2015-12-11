@@ -126,7 +126,9 @@ export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
     componentWillUnmount() {
       socket.__destructionCountdown = setTimeout(() => {
         socket.disconnect();
+        // without a self-destruct, the best we can do is nuke the callbacks to get back to initial state
         // socket = socketCluster.destroy(options);
+        socket._callbacks = {};
       }, this.clusteredOptions.keepAlive);
     }
 
