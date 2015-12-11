@@ -1,11 +1,11 @@
 {
   "name": "redux-socket-cluster",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A socket-cluster state snatcher",
   "main": "lib/index",
   "scripts": {
     "clean": "rimraf lib",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "xo src/index.js --plugin=react --esnext --space --fix",
     "compile": "babel --presets es2015,stage-0,react -d lib/ src/",
     "prepublish": "npm run clean && npm run compile",
     "start": "node lib/index"
@@ -30,7 +30,9 @@
     "babel-preset-es2015": "^6.x.x",
     "babel-preset-react": "^6.x.x",
     "babel-preset-stage-0": "^6.x.x",
-    "rimraf": "^2.4.4"
+    "eslint-plugin-react": "^3.11.3",
+    "rimraf": "^2.4.4",
+    "xo": "^0.11.2"
   },
   "dependencies": {
     "es6-promisify": "^3.0.0",
