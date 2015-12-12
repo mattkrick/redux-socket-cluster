@@ -1,4 +1,6 @@
-import React, { Component } from 'react';
+// For now, socketcluster-client is a devDep because of https://github.com/npm/npm/issues/3081
+import socketCluster from 'socketcluster-client';
+import React, {Component} from 'react';
 import promisify from 'es6-promisify';
 // constants
 const CONNECT_REQUEST = '@@socketCluster/CONNECT_REQUEST';
@@ -20,12 +22,13 @@ const initialState = {
   state: 'closed',
   id: null,
   isAuthenticated: false,
+  // not from socketCluster itself
   isAuthenticating: false,
   lastError: null,
   token: null,
-  // connectionError: '', //waiting on v4
-  // permissionError: '', //waiting on v4
-  // tokenError: '', //waiting on v4
+  // connectionError: '', // waiting on v4
+  // permissionError: '', // waiting on v4
+  // tokenError: '', // waiting on v4
   pendingSubs: [],
   subs: []
 };
@@ -98,37 +101,37 @@ export const socketClusterReducer = function (state = initialState, action) {
 };
 
 // HOC
-export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
-  return class SocketClustered extends Component {
+export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
+  class SocketClustered extends Component {
     static contextTypes = {
       store: React.PropTypes.object.isRequired
     };
 
     constructor(props, context) {
       super(props, context);
+      options = options || {};
       this.clusteredOptions = Object.assign({
         keepAlive: 5000
       }, reduxSCOptions);
     }
 
     componentWillMount() {
-      if (!socket.__destructionCountdown) {
-        // if there is a countdown, we know it already exists
+      this.socket = socketCluster.connect(options);
+      this.authTokenName = options.authTokenName;
+      if (!this.socket.__destructionCountdown) {
         this.handleConnection();
         this.handleError();
         this.handleSubs();
         this.handleAuth();
         return;
       }
-      clearTimeout(socket.__destructionCountdown);
+      clearTimeout(this.socket.__destructionCountdown);
     }
 
     componentWillUnmount() {
-      socket.__destructionCountdown = setTimeout(() => {
-        socket.disconnect();
-        // without a self-destruct, the best we can do is nuke the callbacks to get back to initial state
-        // socket = socketCluster.destroy(options);
-        socket._callbacks = {};
+      this.socket.__destructionCountdown = setTimeout(() => {
+        this.socket.disconnect();
+        this.socket = socketCluster.destroy(options);
       }, this.clusteredOptions.keepAlive);
     }
 
@@ -140,6 +143,7 @@ export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
 
     handleSubs() {
       const {dispatch} = this.context.store;
+      const {socket} = this;
       socket.on('subscribeRequest', channelName => {
         dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
       });
@@ -149,7 +153,7 @@ export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
       socket.on('subscribeFail', (error, channelName) => {
         dispatch({type: SUBSCRIBE_ERROR, payload: {channelName}, error});
       });
-      // only sends a messsage to lastError, unsub does the rest, event has (error, channelName}
+      // only sends a messsage to lastError, unsub does the rest, takes in (error, channelName)
       socket.on('kickOut', error => {
         dispatch({type: KICKOUT, error});
       });
@@ -160,8 +164,9 @@ export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
 
     handleConnection() {
       const {dispatch} = this.context.store;
+      const {socket} = this;
 
-      // handle case where socket was opened just before the HOC
+      // handle case where socket was opened before the HOC
       if (socket.state !== 'open') {
         dispatch({type: CONNECT_REQUEST, payload: {state: socket.getState()}});
         dispatch({
@@ -195,6 +200,7 @@ export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
 
     handleError() {
       const {dispatch} = this.context.store;
+      const {socket} = this;
       socket.on('error', error => {
         dispatch({type: CONNECT_ERROR, error: error.message});
       });
@@ -202,7 +208,7 @@ export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
 
     async handleAuth() {
       const {dispatch} = this.context.store;
-      const {authTokenName} = socket.options;
+      const {socket, authTokenName} = this;
       socket.on('authenticate', token => {
         dispatch({type: AUTH_SUCCESS, payload: {token}});
       });
@@ -221,4 +227,6 @@ export const reduxSocket = (socket, reduxSCOptions) => ComposedComponent => {
       }
     }
   };
-};
+
+
+
