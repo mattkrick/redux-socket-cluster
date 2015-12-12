@@ -1,32 +1,34 @@
+// For now, socketcluster-client is a devDep because of https://github.com/npm/npm/issues/3081
 import socketCluster from 'socketcluster-client';
-import React, { Component,PropTypes } from 'react';
+import React, {Component} from 'react';
 import promisify from 'es6-promisify';
 // constants
-const CONNECT_REQUEST = "@@socketCluster/CONNECT_REQUEST";
-const CONNECT_SUCCESS = "@@socketCluster/CONNECT_SUCCESS";
-const CONNECT_ERROR = "@@socketCluster/CONNECT_ERROR";
-const AUTH_REQUEST = "@@socketCluster/AUTH_REQUEST";
-const AUTH_SUCCESS = "@@socketCluster/AUTH_SUCCESS";
-const AUTH_ERROR = "@@socketCluster/AUTH_ERROR";
-const SUBSCRIBE_REQUEST = "@@socketCluster/SUBSCRIBE_REQUEST";
-const SUBSCRIBE_SUCCESS = "@@socketCluster/SUBSCRIBE_SUCCESS";
-const SUBSCRIBE_ERROR = "@@socketCluster/SUBSCRIBE_ERROR";
-const KICKOUT = "@@socketCluster/KICKOUT";
-const UNSUBSCRIBE = "@@socketCluster/UNSUBSCRIBE";
-const DISCONNECT = "@@socketCluster/DISCONNECT";
-const DEAUTHENTICATE = "@@socketCluster/DEAUTHENTICATE";
+const CONNECT_REQUEST = '@@socketCluster/CONNECT_REQUEST';
+const CONNECT_SUCCESS = '@@socketCluster/CONNECT_SUCCESS';
+const CONNECT_ERROR = '@@socketCluster/CONNECT_ERROR';
+const AUTH_REQUEST = '@@socketCluster/AUTH_REQUEST';
+const AUTH_SUCCESS = '@@socketCluster/AUTH_SUCCESS';
+const AUTH_ERROR = '@@socketCluster/AUTH_ERROR';
+const SUBSCRIBE_REQUEST = '@@socketCluster/SUBSCRIBE_REQUEST';
+const SUBSCRIBE_SUCCESS = '@@socketCluster/SUBSCRIBE_SUCCESS';
+const SUBSCRIBE_ERROR = '@@socketCluster/SUBSCRIBE_ERROR';
+const KICKOUT = '@@socketCluster/KICKOUT';
+const UNSUBSCRIBE = '@@socketCluster/UNSUBSCRIBE';
+const DISCONNECT = '@@socketCluster/DISCONNECT';
+const DEAUTHENTICATE = '@@socketCluster/DEAUTHENTICATE';
 
 // Reducer
 const initialState = {
   state: 'closed',
   id: null,
   isAuthenticated: false,
-  isAuthenticating: false, //not from socketCluster itself
+  // not from socketCluster itself
+  isAuthenticating: false,
   lastError: null,
   token: null,
-  //connectionError: '', //waiting on v4
-  //permissionError: '', //waiting on v4
-  //tokenError: '', //waiting on v4
+  // connectionError: '', // waiting on v4
+  // permissionError: '', // waiting on v4
+  // tokenError: '', // waiting on v4
   pendingSubs: [],
   subs: []
 };
@@ -96,11 +98,11 @@ export const socketClusterReducer = function (state = initialState, action) {
     default:
       return state;
   }
-}
+};
 
 // HOC
-export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
-  return class SocketClustered extends Component {
+export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
+  class SocketClustered extends Component {
     static contextTypes = {
       store: React.PropTypes.object.isRequired
     };
@@ -110,7 +112,7 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
       options = options || {};
       this.clusteredOptions = Object.assign({
         keepAlive: 5000
-      }, reduxSCOptions)
+      }, reduxSCOptions);
     }
 
     componentWillMount() {
@@ -130,41 +132,41 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
       this.socket.__destructionCountdown = setTimeout(() => {
         this.socket.disconnect();
         this.socket = socketCluster.destroy(options);
-      }, this.clusteredOptions.keepAlive)
+      }, this.clusteredOptions.keepAlive);
     }
 
     render() {
       return (
         <ComposedComponent {...this.props}/>
-      )
+      );
     }
 
     handleSubs() {
       const {dispatch} = this.context.store;
       const {socket} = this;
       socket.on('subscribeRequest', channelName => {
-        dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}})
-      })
+        dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
+      });
       socket.on('subscribe', channelName => {
-        dispatch({type: SUBSCRIBE_SUCCESS, payload: {channelName}})
-      })
+        dispatch({type: SUBSCRIBE_SUCCESS, payload: {channelName}});
+      });
       socket.on('subscribeFail', (error, channelName) => {
-        dispatch({type: SUBSCRIBE_ERROR, payload: {channelName}, error})
-      })
-      //only sends a messsage to lastError, unsub does the rest
-      socket.on('kickOut', (error, channelName) => {
-        dispatch({type: KICKOUT, error})
-      })
-      socket.on('unsubscribe', (channelName) => {
-        dispatch({type: UNSUBSCRIBE, payload: {channelName}})
-      })
+        dispatch({type: SUBSCRIBE_ERROR, payload: {channelName}, error});
+      });
+      // only sends a messsage to lastError, unsub does the rest, takes in (error, channelName)
+      socket.on('kickOut', error => {
+        dispatch({type: KICKOUT, error});
+      });
+      socket.on('unsubscribe', channelName => {
+        dispatch({type: UNSUBSCRIBE, payload: {channelName}});
+      });
     }
 
     handleConnection() {
       const {dispatch} = this.context.store;
       const {socket} = this;
 
-      //handle case where socket was opened before the HOC
+      // handle case where socket was opened before the HOC
       if (socket.state !== 'open') {
         dispatch({type: CONNECT_REQUEST, payload: {state: socket.getState()}});
         dispatch({
@@ -185,12 +187,13 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
             state: 'open'
           },
           error: status.authError
-        })
-      })
+        });
+      });
       socket.on('disconnect', () => {
         dispatch({type: DISCONNECT});
       });
-      socket.on('connectAbort', () => { //triggers while in connecting state
+      // triggers while in connecting state
+      socket.on('connectAbort', () => {
         dispatch({type: DISCONNECT});
       });
     }
@@ -199,8 +202,8 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
       const {dispatch} = this.context.store;
       const {socket} = this;
       socket.on('error', error => {
-        dispatch({type: CONNECT_ERROR, error: error.message})
-      })
+        dispatch({type: CONNECT_ERROR, error: error.message});
+      });
     }
 
     async handleAuth() {
@@ -223,6 +226,7 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent => {
         }
       }
     }
-  }
-};
+  };
+
+
 
