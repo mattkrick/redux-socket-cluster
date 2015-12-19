@@ -167,17 +167,21 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
       const {socket} = this;
 
       // handle case where socket was opened before the HOC
-      if (socket.state !== 'open') {
+      if (socket.state === 'open') {
+        if (!socket.id || !socket.isAuthenticated) {
+          dispatch({
+            type: CONNECT_SUCCESS,
+            payload: {
+              id: socket.id,
+              isAuthenticated: socket.isAuthenticated,
+              state: socket.state
+            }
+          })
+        }
+      } else {
         dispatch({type: CONNECT_REQUEST, payload: {state: socket.getState()}});
-        dispatch({
-          type: CONNECT_SUCCESS,
-          payload: {
-            id: socket.id,
-            isAuthenticated: socket.isAuthenticated,
-            state: socket.state
-          }
-        });
       }
+
       socket.on('connect', status => {
         dispatch({
           type: CONNECT_SUCCESS,
