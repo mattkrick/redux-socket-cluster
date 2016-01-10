@@ -1,3 +1,5 @@
+[![npm version](https://badge.fury.io/js/redux-socket-cluster.svg)](https://badge.fury.io/js/redux-socket-cluster)
+
 # redux-socket-cluster
 A socket-cluster state snatcher
 
