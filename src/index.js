@@ -2,7 +2,10 @@
 import socketCluster from 'socketcluster-client';
 import React, {Component} from 'react';
 import promisify from 'es6-promisify';
+import {Map, List} from 'immutable';
+
 // constants
+const {CLOSED, CONNECTING, OPEN, AUTHENTICATED, PENDING, UNAUTHENTICATED} = socketCluster.SCSocket;
 const CONNECT_REQUEST = '@@socketCluster/CONNECT_REQUEST';
 const CONNECT_SUCCESS = '@@socketCluster/CONNECT_SUCCESS';
 const CONNECT_ERROR = '@@socketCluster/CONNECT_ERROR';
@@ -11,89 +14,84 @@ const AUTH_SUCCESS = '@@socketCluster/AUTH_SUCCESS';
 const AUTH_ERROR = '@@socketCluster/AUTH_ERROR';
 const SUBSCRIBE_REQUEST = '@@socketCluster/SUBSCRIBE_REQUEST';
 const SUBSCRIBE_SUCCESS = '@@socketCluster/SUBSCRIBE_SUCCESS';
+const UNSUBSCRIBE = '@@socketCluster/UNSUBSCRIBE';
 const SUBSCRIBE_ERROR = '@@socketCluster/SUBSCRIBE_ERROR';
 const KICKOUT = '@@socketCluster/KICKOUT';
-const UNSUBSCRIBE = '@@socketCluster/UNSUBSCRIBE';
 const DISCONNECT = '@@socketCluster/DISCONNECT';
 const DEAUTHENTICATE = '@@socketCluster/DEAUTHENTICATE';
 
 // Reducer
-const initialState = {
-  state: 'closed',
+const initialState = Map({
   id: null,
-  isAuthenticated: false,
-  // not from socketCluster itself
-  isAuthenticating: false,
-  lastError: null,
-  token: null,
-  // connectionError: '', // waiting on v4
-  // permissionError: '', // waiting on v4
-  // tokenError: '', // waiting on v4
-  pendingSubs: [],
-  subs: []
-};
+  socketState: CLOSED,
+  authState: PENDING,
+  authToken: null,
+  authError: null,
+  error: null,
+  pendingSubs: List(),
+  subs: List()
+});
 
 export const socketClusterReducer = function (state = initialState, action) {
   switch (action.type) {
     case DEAUTHENTICATE:
-      return Object.assign({}, state, {
-        isAuthenticated: false,
-        token: null
+      return state.merge({
+        authState: UNAUTHENTICATED,
+        authToken: null
       });
     case DISCONNECT:
-      return Object.assign({}, initialState);
+      return initialState;
     case CONNECT_REQUEST:
-      return Object.assign({}, state, {
-        state: 'connecting'
+      return state.merge({
+        socketState: CONNECTING
       });
     case CONNECT_ERROR:
-      return Object.assign({}, state, {
-        lastError: action.error
+      return state.merge({
+        error: action.error
       });
     case CONNECT_SUCCESS:
-      return Object.assign({}, state, {
-        state: action.payload.state,
+      return state.merge({
         id: action.payload.id,
-        isAuthenticated: action.payload.isAuthenticated,
-        lastError: action.error
+        socketState: action.payload.socketState,
+        authState: action.payload.authState,
+        error: action.error
       });
     case AUTH_REQUEST:
-      return Object.assign({}, state, {
-        isAuthenticating: true
+      return state.merge({
+        authState: PENDING
       });
     case AUTH_SUCCESS:
-      return Object.assign({}, state, {
-        isAuthenticating: false,
-        isAuthenticated: true,
-        token: action.payload.token
+      return state.merge({
+        authState: AUTHENTICATED,
+        authToken: action.payload.authToken
       });
     case AUTH_ERROR:
-      return Object.assign({}, state, {
-        isAuthenticating: false,
-        isAuthenticated: false,
-        lastError: action.error
+      return state.merge({
+        authState: UNAUTHENTICATED,
+        authError: action.error
       });
     case SUBSCRIBE_REQUEST:
-      return Object.assign({}, state, {
-        pendingSubs: [...state.pendingSubs, action.payload.channelName]
+      return state.merge({
+        pendingSubs: state.pendingSubs.push(action.payload.channelName)
       });
     case SUBSCRIBE_SUCCESS:
-      return Object.assign({}, state, {
+      return state.merge({
         pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
-        subs: [...state.subs, action.payload.channelName]
+        subs: state.subs.push(action.payload.channelName)
       });
     case SUBSCRIBE_ERROR:
-      return Object.assign({}, state, {
+      return state.merge({
         pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
-        lastError: action.error
-      });
-    case KICKOUT:
-      return Object.assign({}, state, {
-        lastError: action.error
+        error: action.error
       });
     case UNSUBSCRIBE:
-      return Object.assign({}, state, {
-        subs: state.subs.filter(sub => sub !== action.payload.channelName)
+      return state.merge({
+        subs: state.subs.filter(sub => sub !== action.payload.channelName),
+        error: action.error
+      });
+    case KICKOUT:
+      return state.merge({
+        error: action.error
       });
     default:
       return state;
@@ -144,8 +142,10 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
     handleSubs() {
       const {dispatch} = this.context.store;
       const {socket} = this;
-      socket.on('subscribeRequest', channelName => {
-        dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
+      socket.on('subscribeStateChange', (channelName, oldState, newState) => {
+        if (newState === PENDING) {
+          dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
+        }
       });
       socket.on('subscribe', channelName => {
         dispatch({type: SUBSCRIBE_SUCCESS, payload: {channelName}});
@@ -153,7 +153,7 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
       socket.on('subscribeFail', (error, channelName) => {
         dispatch({type: SUBSCRIBE_ERROR, payload: {channelName}, error});
       });
-      // only sends a messsage to lastError, unsub does the rest, takes in (error, channelName)
+      // only sends a messsage to error, unsub does the rest, takes in (error, channelName)
       socket.on('kickOut', error => {
         dispatch({type: KICKOUT, error});
       });
@@ -167,19 +167,19 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
       const {socket} = this;
 
       // handle case where socket was opened before the HOC
-      if (socket.state === 'open') {
-        if (!socket.id || !socket.isAuthenticated) {
+      if (socket.state === OPEN) {
+        if (!socket.id || socket.authState !== AUTHENTICATED) {
           dispatch({
             type: CONNECT_SUCCESS,
             payload: {
               id: socket.id,
-              isAuthenticated: socket.isAuthenticated,
-              state: socket.state
+              authState: socket.authState,
+              socketState: socket.state
             }
           })
         }
       } else {
-        dispatch({type: CONNECT_REQUEST, payload: {state: socket.getState()}});
+        dispatch({type: CONNECT_REQUEST, payload: {socketState: socket.state}});
       }
 
       socket.on('connect', status => {
@@ -187,8 +187,8 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
           type: CONNECT_SUCCESS,
           payload: {
             id: status.id,
-            isAuthenticated: status.isAuthenticated,
-            state: 'open'
+            authState: socket.authState,
+            socketState: socket.state
           },
           error: status.authError
         });
@@ -213,24 +213,21 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
     async handleAuth() {
       const {dispatch} = this.context.store;
       const {socket, authTokenName} = this;
-      socket.on('authenticate', token => {
-        dispatch({type: AUTH_SUCCESS, payload: {token}});
+      socket.on('authenticate', authToken => {
+        dispatch({type: AUTH_SUCCESS, payload: {authToken}});
       });
-      socket.on('removeAuthToken', () => {
+      socket.on('deauthenticate', () => {
         dispatch({type: DEAUTHENTICATE});
       });
-      if (authTokenName && socket.isAuthenticated !== true) {
+      if (authTokenName && socket.authState !== AUTHENTICATED) {
         dispatch({type: AUTH_REQUEST});
         const loadToken = promisify(socket.auth.loadToken.bind(socket.auth));
         const authenticate = promisify(socket.authenticate.bind(socket));
-        const token = await loadToken(authTokenName);
-        const authStatus = await authenticate(token);
+        const authToken = await loadToken(authTokenName);
+        const authStatus = await authenticate(authToken);
         if (authStatus.authError) {
           dispatch({type: AUTH_ERROR, error: authStatus.authError.message});
         }
       }
     }
   };
-
-
-
