@@ -72,21 +72,21 @@ export const socketClusterReducer = function (state = initialState, action) {
       });
     case SUBSCRIBE_REQUEST:
       return state.merge({
-        pendingSubs: state.pendingSubs.push(action.payload.channelName)
+        pendingSubs: state.get('pendingSubs').push(action.payload.channelName)
       });
     case SUBSCRIBE_SUCCESS:
       return state.merge({
-        pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
+        pendingSubs: state.get('pendingSubs').filter(sub => sub !== action.payload.channelName),
         subs: state.subs.push(action.payload.channelName)
       });
     case SUBSCRIBE_ERROR:
       return state.merge({
-        pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
+        pendingSubs: state.get('pendingSubs').filter(sub => sub !== action.payload.channelName),
         error: action.error
       });
     case UNSUBSCRIBE:
       return state.merge({
-        subs: state.subs.filter(sub => sub !== action.payload.channelName),
+        subs: state.get('subs').filter(sub => sub !== action.payload.channelName),
         error: action.error
       });
     case KICKOUT:
