@@ -71,13 +71,14 @@ export const socketClusterReducer = function (state = initialState, action) {
         authError: action.error
       });
     case SUBSCRIBE_REQUEST:
+      console.log('')
       return state.merge({
         pendingSubs: state.get('pendingSubs').push(action.payload.channelName)
       });
     case SUBSCRIBE_SUCCESS:
       return state.merge({
         pendingSubs: state.get('pendingSubs').filter(sub => sub !== action.payload.channelName),
-        subs: state.subs.push(action.payload.channelName)
+        subs: state.get('subs').push(action.payload.channelName)
       });
     case SUBSCRIBE_ERROR:
       return state.merge({
