@@ -57,43 +57,42 @@ test.cb('pass through props to container', t => {
 
 ////TODO http://stackoverflow.com/questions/34698647/testing-a-property-of-a-react-hoc
 // TODO https://discuss.reactjs.org/t/testing-lifecycle-methods-in-higher-order-components/2897
-test.cb('set options and sockets on container object', t => {
-  t.plan(1);
-  require('./setup/dom');
-  const port = parseInt(Math.random() * 65536);
-  const React = require('react');
-  const {Component} = React;
-  const store = createStore(() => {
-  }, {});
-  makeServer(() => {
-    class Container extends Component {
-      render() {
-        return <div {...this.props} />
-      }
-    }
-
-    class WrappedCont extends Component {
-      render() {
-        return (
-          <Provider store={store}>
-            <Container/>
-          </Provider>
-        )
-      }
-    }
-
-    const ConnectedCont = connect()(WrappedCont);
-    console.log('CC')
-    const hoc = reduxSocket(socketOptions)(ConnectedCont);
-    const instance = new hoc;
-    instance.componentWillMount();
-    console.log('INSTANCE', instance);
-    //const shallowRenderer = TestUtils.createRenderer();
-    //shallowRenderer.render(<reduxSocket/>);
-    //t.is(shallowRenderer.getMountedInstance().clusteredOptions, 5000);
-    endTest(t, port);
-  }, port);
-});
+//test.cb('set options and sockets on container object', t => {
+//  t.plan(1);
+//  require('./setup/dom');
+//  const port = parseInt(Math.random() * 65536);
+//  const React = require('react');
+//  const {Component} = React;
+//  const store = createStore(() => {
+//  }, {});
+//  makeServer(() => {
+//    class Container extends Component {
+//      render() {
+//        return <div {...this.props} />
+//      }
+//    }
+//
+//    class WrappedCont extends Component {
+//      render() {
+//        return (
+//          <Provider store={store}>
+//            <Container/>
+//          </Provider>
+//        )
+//      }
+//    }
+//
+//    const ConnectedCont = connect()(WrappedCont);
+//    const hoc = reduxSocket(socketOptions)(ConnectedCont);
+//    const instance = new hoc;
+//    instance.componentWillMount();
+//    console.log('INSTANCE', instance);
+//    //const shallowRenderer = TestUtils.createRenderer();
+//    //shallowRenderer.render(<reduxSocket/>);
+//    //t.is(shallowRenderer.getMountedInstance().clusteredOptions, 5000);
+//    endTest(t, port);
+//  }, port);
+//});
 
 test('reducer sets initial state given undefined', t => {
   t.plan(1);
