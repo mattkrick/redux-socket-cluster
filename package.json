@@ -1,6 +1,6 @@
 {
   "name": "redux-socket-cluster",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "A socket-cluster state snatcher",
   "main": "lib/index",
   "scripts": {
