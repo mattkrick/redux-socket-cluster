@@ -9,7 +9,8 @@
     "build": "babel --presets es2015,stage-0,react -d lib/ src/",
     "prepublish": "npm run clean && npm run build",
     "start": "node lib/index",
-    "test": "ava __tests__/index-tests.js --verbose"
+    "test": "ava __tests__/index-tests.js --verbose",
+    "watch": "babel -w --presets es2015,stage-0 -d lib/ src/"
   },
   "repository": {
     "type": "git",
@@ -27,29 +28,31 @@
   },
   "homepage": "https://github.com/mattkrick/redux-socket-cluster#readme",
   "devDependencies": {
-    "ava": "^0.9.1",
-    "babel-cli": "^6.4.0",
-    "babel-plugin-add-module-exports": "^0.1.2",
-    "babel-plugin-react-transform": "^2.0.0",
+    "ava": "^0.15.2",
+    "babel-cli": "^6.10.1",
+    "babel-plugin-add-module-exports": "^0.2.1",
+    "babel-plugin-react-transform": "^2.0.2",
     "babel-plugin-transform-decorators-legacy": "^1.3.4",
+    "babel-plugin-transform-runtime": "^6.9.0",
     "babel-polyfill": "^6.x.x",
     "babel-preset-es2015": "^6.x.x",
     "babel-preset-react": "^6.x.x",
     "babel-preset-stage-0": "^6.x.x",
-    "babel-register": "^6.3.13",
-    "express": "^4.13.3",
-    "jsdom": "^7.2.2",
-    "react-addons-test-utils": "^0.14.6",
-    "react-dom": "^0.14.6",
-    "react-redux": "^4.0.6",
-    "redux": "^3.0.5",
-    "rimraf": "^2.5.0"
+    "babel-register": "^6.9.0",
+    "babel-runtime": "^6.9.2",
+    "express": "^4.14.0",
+    "jsdom": "^9.3.0",
+    "react-addons-test-utils": "^15.1.0",
+    "react-dom": "^15.1.0",
+    "react-redux": "^4.4.5",
+    "redux": "^3.5.2",
+    "rimraf": "^2.5.2"
   },
   "dependencies": {
-    "es6-promisify": "^3.0.0",
-    "immutable": "^3.7.6",
-    "react": "^0.14.6",
-    "socketcluster": "^4.0.0",
-    "socketcluster-client": "^4.0.1"
+    "es6-promisify": "^4.1.0",
+    "immutable": "^3.8.1",
+    "react": "^15.1.0",
+    "socketcluster": "^4.6.2",
+    "socketcluster-client": "^4.3.19"
   }
 }

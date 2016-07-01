@@ -71,7 +71,6 @@ export const socketClusterReducer = function (state = initialState, action) {
         authError: action.error
       });
     case SUBSCRIBE_REQUEST:
-      console.log('')
       return state.merge({
         pendingSubs: state.get('pendingSubs').push(action.payload.channelName)
       });
@@ -109,8 +108,14 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
     constructor(props, context) {
       super(props, context);
       options = options || {};
+      this.options = options;
+      const {AuthEngine} = reduxSCOptions;
+
+      if (AuthEngine) {
+        this.options.authEngine = new AuthEngine(context.store);
+      }
       this.clusteredOptions = Object.assign({
-        keepAlive: 5000
+        keepAlive: 15000
       }, reduxSCOptions);
     }
 
