@@ -99,7 +99,7 @@ export const socketClusterReducer = function (state = initialState, action) {
 };
 
 // HOC
-export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
+export const reduxSocket = (options, hocOptions) => ComposedComponent =>
   class SocketClustered extends Component {
     static contextTypes = {
       store: React.PropTypes.object.isRequired
@@ -109,19 +109,19 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
       super(props, context);
       options = options || {};
       this.options = options;
-      const {AuthEngine} = reduxSCOptions;
-
+      const {AuthEngine} = hocOptions;
+      this.socketCluster = hocOptions.socketCluster || socketCluster;
       if (AuthEngine) {
         this.options.authEngine = new AuthEngine(context.store);
       }
-      this.clusteredOptions = Object.assign({
+      this.hocOptions = Object.assign({
         keepAlive: 15000
-      }, reduxSCOptions);
+      }, hocOptions);
     }
 
     componentWillMount() {
-      this.socket = socketCluster.connect(options);
-      this.authTokenName = options.authTokenName;
+      this.socket = this.socketCluster.connect(this.options);
+      this.authTokenName = this.options.authTokenName;
       if (!this.socket.__destructionCountdown) {
         this.handleConnection();
         this.handleError();
@@ -130,13 +130,21 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
         return;
       }
       clearTimeout(this.socket.__destructionCountdown);
+      const {onConnect} = this.hocOptions;
+      if (onConnect) {
+        onConnect(this.socket);
+      }
     }
 
     componentWillUnmount() {
       this.socket.__destructionCountdown = setTimeout(() => {
         this.socket.disconnect();
-        this.socket = socketCluster.destroy(options);
-      }, this.clusteredOptions.keepAlive);
+        this.socket = this.socketCluster.destroy(options);
+        const {onDisconnect} = this.hocOptions;
+        if (onDisconnect) {
+          onDisconnect(true, this.socket);
+        }
+      }, this.hocOptions.keepAlive);
     }
 
     render() {
@@ -201,6 +209,11 @@ export const reduxSocket = (options, reduxSCOptions) => ComposedComponent =>
       });
       socket.on('disconnect', () => {
         dispatch({type: DISCONNECT});
+        const {onDisconnect} = this.hocOptions;
+        if (onDisconnect) {
+          // did not time out, so first param is false
+          onDisconnect(false, this.socket);
+        }
       });
       // triggers while in connecting state
       socket.on('connectAbort', () => {

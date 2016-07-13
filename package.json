@@ -52,7 +52,6 @@
     "es6-promisify": "^4.1.0",
     "immutable": "^3.8.1",
     "react": "^15.1.0",
-    "socketcluster": "^4.6.2",
     "socketcluster-client": "^4.3.19"
   }
 }
