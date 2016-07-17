@@ -48,10 +48,11 @@
     "redux": "^3.5.2",
     "rimraf": "^2.5.2"
   },
+  "peerDependencies": {
+    "socketcluster-client": "^4.3.19"
+  },
   "dependencies": {
     "es6-promisify": "^4.1.0",
-    "immutable": "^3.8.1",
-    "react": "^15.1.0",
-    "socketcluster-client": "^4.3.19"
+    "react": "^15.1.0"
   }
 }

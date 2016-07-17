@@ -30,7 +30,7 @@ function reducer(state, action) {
   }
 }
 ```
-This initial state object is an immutable.js Map that looks like this:
+This initial state object is an Object that looks like this:
 
 ```
   id: null,
@@ -39,15 +39,15 @@ This initial state object is an immutable.js Map that looks like this:
   authToken: null,
   authError: null,
   error: null,
-  pendingSubs: List(),
-  subs: List()
+  pendingSubs: [],
+  subs: []
 ```
-###`reduxSocket(socketClusterOptions, hocOptions)` - a HOC to put on your highest level real-time component.
+###`reduxSocket(options, hocOptions)` - a HOC to put on your highest level real-time component.
 eg `@reduxSocket({authTokenName: 'MyApp.token'}, {keepAlive: 60000})`
 
 For example, if you use websockets for everything, stick this on the main `app`.
 If only certain components have websockets, stick this on those containers.
-The `socketClusterOptions` are identical to the options you'd pass in to the client socketCluster 
+The `options` are identical to what you'd pass in to the client socketCluster
 (http://socketcluster.io/#!/docs/api-socketcluster-client).
  
 `hocOptions` has the following properties:
@@ -57,9 +57,9 @@ Say the client subs to 1000 items & accidently clicks a link that unmounts the c
 if they make it back to the component before the time expires, you won't have to start a new connection or resend
 those 1000 documents. Plus, any docs that came in while they were away will be there too. Neat!
 - `AuthEngine`: a class that takes in a redux `store` and creates a socket cluster `AuthEngine`.
-- `onConnect(socket)`: a callback that returns an active socket when a connection has been established.
+- `onConnect(options, hocOptions, socket)`: a callback that returns an active socket when a connection has been established.
 Useful if you want to do something like upgrade a transport from HTTP to sockets
-- `onDisconnect(timedOut, socket)`: a callback that returns a Boolean that is true due to `keepAlive` expiring
+- `onDisconnect(timedOut, options, hocOptions, socket)`: a callback that returns a Boolean that is true due to `keepAlive` expiring
 and the now inactive socket.
 Similar to above, this is useful if you want to downgrade something from a socket transport to HTTP.
 
