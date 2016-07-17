@@ -1,11 +1,14 @@
-// For now, socketcluster-client is a devDep because of https://github.com/npm/npm/issues/3081
-import socketCluster from 'socketcluster-client';
 import React, {Component} from 'react';
 import promisify from 'es6-promisify';
-import {Map, List} from 'immutable';
 
 // constants
-const {CLOSED, CONNECTING, OPEN, AUTHENTICATED, PENDING, UNAUTHENTICATED} = socketCluster.SCSocket;
+const CLOSED = 'closed';
+const CONNECTING = 'connecting';
+const OPEN = 'open';
+const AUTHENTICATED = 'authenticated';
+const PENDING = 'pending';
+const UNAUTHENTICATED = 'unauthenticated';
+
 const CONNECT_REQUEST = '@@socketCluster/CONNECT_REQUEST';
 const CONNECT_SUCCESS = '@@socketCluster/CONNECT_SUCCESS';
 const CONNECT_ERROR = '@@socketCluster/CONNECT_ERROR';
@@ -21,78 +24,90 @@ const DISCONNECT = '@@socketCluster/DISCONNECT';
 const DEAUTHENTICATE = '@@socketCluster/DEAUTHENTICATE';
 
 // Reducer
-const initialState = Map({
+const initialState = {
   id: null,
   socketState: CLOSED,
   authState: PENDING,
   authToken: null,
   authError: null,
   error: null,
-  pendingSubs: List(),
-  subs: List()
-});
+  pendingSubs: [],
+  subs: []
+};
 
 export const socketClusterReducer = function (state = initialState, action) {
   switch (action.type) {
     case DEAUTHENTICATE:
-      return state.merge({
+      return {
+        ...state,
         authState: UNAUTHENTICATED,
         authToken: null
-      });
+      };
     case DISCONNECT:
       return initialState;
     case CONNECT_REQUEST:
-      return state.merge({
+      return {
+        ...state,
         socketState: CONNECTING
-      });
+      };
     case CONNECT_ERROR:
-      return state.merge({
+      return {
+        ...state,
         error: action.error
-      });
+      };
     case CONNECT_SUCCESS:
-      return state.merge({
+      return {
+        ...state,
         id: action.payload.id,
         socketState: action.payload.socketState,
         authState: action.payload.authState,
         error: action.error
-      });
+      };
     case AUTH_REQUEST:
-      return state.merge({
+      return {
+        ...state,
         authState: PENDING
-      });
+      };
     case AUTH_SUCCESS:
-      return state.merge({
+      return {
+        ...state,
         authState: AUTHENTICATED,
         authToken: action.payload.authToken
-      });
+      };
     case AUTH_ERROR:
-      return state.merge({
+      return {
+        ...state,
         authState: UNAUTHENTICATED,
         authError: action.error
-      });
+      };
     case SUBSCRIBE_REQUEST:
-      return state.merge({
-        pendingSubs: state.get('pendingSubs').push(action.payload.channelName)
-      });
+      return {
+        ...state,
+        pendingSubs: state.pendingSubs.concat(action.payload.channelName)
+      };
     case SUBSCRIBE_SUCCESS:
-      return state.merge({
-        pendingSubs: state.get('pendingSubs').filter(sub => sub !== action.payload.channelName),
-        subs: state.get('subs').push(action.payload.channelName)
-      });
+      return {
+        ...state,
+        pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
+        subs: state.subs.concat(action.payload.channelName)
+      };
     case SUBSCRIBE_ERROR:
-      return state.merge({
-        pendingSubs: state.get('pendingSubs').filter(sub => sub !== action.payload.channelName),
+      return {
+        ...state,
+        pendingSubs: state.pendingSubs.filter(sub => sub !== action.payload.channelName),
         error: action.error
-      });
+      };
     case UNSUBSCRIBE:
-      return state.merge({
-        subs: state.get('subs').filter(sub => sub !== action.payload.channelName),
+      return {
+        ...state,
+        subs: state.subs.filter(sub => sub !== action.payload.channelName),
         error: action.error
-      });
+      };
     case KICKOUT:
-      return state.merge({
+      return {
+        ...state,
         error: action.error
-      });
+      };
     default:
       return state;
   }
@@ -127,13 +142,13 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
         this.handleError();
         this.handleSubs();
         this.handleAuth();
+        const {onConnect} = this.hocOptions;
+        if (onConnect) {
+          onConnect(this.options, this.hocOptions, this.socket);
+        }
         return;
       }
       clearTimeout(this.socket.__destructionCountdown);
-      const {onConnect} = this.hocOptions;
-      if (onConnect) {
-        onConnect(this.socket);
-      }
     }
 
     componentWillUnmount() {
@@ -142,7 +157,7 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
         this.socket = this.socketCluster.destroy(options);
         const {onDisconnect} = this.hocOptions;
         if (onDisconnect) {
-          onDisconnect(true, this.socket);
+          onDisconnect(true, this.options, this.hocOptions, this.socket);
         }
       }, this.hocOptions.keepAlive);
     }
@@ -160,6 +175,9 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
         if (newState === PENDING) {
           dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
         }
+      });
+      socket.on('subscribeRequest', channelName => {
+        dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
       });
       socket.on('subscribe', channelName => {
         dispatch({type: SUBSCRIBE_SUCCESS, payload: {channelName}});
@@ -212,7 +230,7 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
         const {onDisconnect} = this.hocOptions;
         if (onDisconnect) {
           // did not time out, so first param is false
-          onDisconnect(false, this.socket);
+          onDisconnect(false, this.options, this.hocOptions, this.socket);
         }
       });
       // triggers while in connecting state
