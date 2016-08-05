@@ -53,6 +53,6 @@
   },
   "dependencies": {
     "es6-promisify": "^4.1.0",
-    "react": "^15.1.0"
+    "react": "^15.3.0"
   }
 }
