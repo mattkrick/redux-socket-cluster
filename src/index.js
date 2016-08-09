@@ -177,8 +177,7 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
         }
       });
       socket.on('subscribeRequest', channelName => {
-        // delay the dispatch in case someone subs inside a render
-        setTimeout(() => dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}}),0);
+        dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
       });
       socket.on('subscribe', channelName => {
         dispatch({type: SUBSCRIBE_SUCCESS, payload: {channelName}});
