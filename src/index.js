@@ -35,7 +35,7 @@ const initialState = {
   subs: []
 };
 
-export const socketClusterReducer = function (state = initialState, action) {
+export const socketClusterReducer = function(state = initialState, action) {
   switch (action.type) {
     case DEAUTHENTICATE:
       return {
@@ -123,43 +123,48 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
     constructor(props, context) {
       super(props, context);
       options = options || {};
-      this.options = options;
       const {AuthEngine} = hocOptions;
-      this.socketCluster = hocOptions.socketCluster || socketCluster;
-      if (AuthEngine) {
-        this.options.authEngine = new AuthEngine(context.store);
+      const newOptions = AuthEngine ? {...options, authEngine: new AuthEngine(context.store)} : options;
+      const socketCluster = hocOptions.socketCluster || socketCluster;
+      this.state = {
+        options: newOptions,
+        socketCluster,
+        hocOptions: Object.assign({
+          keepAlive: 15000
+        }, hocOptions),
+        socket: socketCluster.connect(newOptions),
+        authTokenName: newOptions.authTokenName
       }
-      this.hocOptions = Object.assign({
-        keepAlive: 15000
-      }, hocOptions);
     }
 
     componentWillMount() {
-      this.socket = this.socketCluster.connect(this.options);
-      this.authTokenName = this.options.authTokenName;
-      if (!this.socket.__destructionCountdown) {
+      const {socket, hocOptions, options} = this.state;
+      if (!socket.__destructionCountdown) {
         this.handleConnection();
         this.handleError();
         this.handleSubs();
         this.handleAuth();
-        const {onConnect} = this.hocOptions;
+        const {onConnect} = hocOptions;
         if (onConnect) {
-          onConnect(this.options, this.hocOptions, this.socket);
+          onConnect(options, hocOptions, socket);
         }
         return;
       }
-      clearTimeout(this.socket.__destructionCountdown);
+      clearTimeout(socket.__destructionCountdown);
     }
 
     componentWillUnmount() {
-      this.socket.__destructionCountdown = setTimeout(() => {
-        this.socket.disconnect();
-        this.socket = this.socketCluster.destroy(options);
-        const {onDisconnect} = this.hocOptions;
-        if (onDisconnect) {
-          onDisconnect(true, this.options, this.hocOptions, this.socket);
-        }
-      }, this.hocOptions.keepAlive);
+      const {socket, socketCluster, hocOptions, options} = this.state;
+      socket.__destructionCountdown = hocOptions.keepAlive < Number.MAX_SAFE_INTEGER ?
+        setTimeout(() => {
+          socket.disconnect();
+          socketCluster.destroy(options);
+          const {onDisconnect} = hocOptions;
+          if (onDisconnect) {
+            onDisconnect(true, options, hocOptions, socket);
+          }
+        }, hocOptions.keepAlive) :
+        () => true;
     }
 
     render() {
@@ -170,14 +175,16 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
 
     handleSubs() {
       const {dispatch} = this.context.store;
-      const {socket} = this;
+      const {socket} = this.state;
       socket.on('subscribeStateChange', (channelName, oldState, newState) => {
         if (newState === PENDING) {
           dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
         }
       });
       socket.on('subscribeRequest', channelName => {
+        // delay the dispatch in case someone subs inside a render
         dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
+        // setTimeout(() => dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}}),0);
       });
       socket.on('subscribe', channelName => {
         dispatch({type: SUBSCRIBE_SUCCESS, payload: {channelName}});
@@ -196,7 +203,7 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
 
     handleConnection() {
       const {dispatch} = this.context.store;
-      const {socket} = this;
+      const {socket, hocOptions, options} = this.state;
 
       // handle case where socket was opened before the HOC
       if (socket.state === OPEN) {
@@ -227,10 +234,10 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
       });
       socket.on('disconnect', () => {
         dispatch({type: DISCONNECT});
-        const {onDisconnect} = this.hocOptions;
+        const {onDisconnect} = hocOptions;
         if (onDisconnect) {
           // did not time out, so first param is false
-          onDisconnect(false, this.options, this.hocOptions, this.socket);
+          onDisconnect(false, options, hocOptions, socket);
         }
       });
       // triggers while in connecting state
@@ -241,7 +248,7 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
 
     handleError() {
       const {dispatch} = this.context.store;
-      const {socket} = this;
+      const {socket} = this.state;
       socket.on('error', error => {
         dispatch({type: CONNECT_ERROR, error: error.message});
       });
@@ -249,7 +256,7 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
 
     async handleAuth() {
       const {dispatch} = this.context.store;
-      const {socket, authTokenName} = this;
+      const {socket, authTokenName} = this.state;
       socket.on('authenticate', authToken => {
         dispatch({type: AUTH_SUCCESS, payload: {authToken}});
       });
