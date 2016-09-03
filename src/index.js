@@ -114,7 +114,7 @@ export const socketClusterReducer = function(state = initialState, action) {
 };
 
 // HOC
-export const reduxSocket = (options, hocOptions) => ComposedComponent =>
+export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
   class SocketClustered extends Component {
     static contextTypes = {
       store: React.PropTypes.object.isRequired
@@ -122,10 +122,9 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
 
     constructor(props, context) {
       super(props, context);
-      options = options || {};
       const {AuthEngine} = hocOptions;
       const newOptions = AuthEngine ? {...options, authEngine: new AuthEngine(context.store)} : options;
-      const socketCluster = hocOptions.socketCluster || socketCluster;
+      const socketCluster = hocOptions.socketCluster;
       this.state = {
         options: newOptions,
         socketCluster,
@@ -148,6 +147,8 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
         if (onConnect) {
           onConnect(options, hocOptions, socket);
         }
+        //
+        socket.__destructionCountdown = true;
         return;
       }
       clearTimeout(socket.__destructionCountdown);
@@ -155,16 +156,17 @@ export const reduxSocket = (options, hocOptions) => ComposedComponent =>
 
     componentWillUnmount() {
       const {socket, socketCluster, hocOptions, options} = this.state;
-      socket.__destructionCountdown = hocOptions.keepAlive < Number.MAX_SAFE_INTEGER ?
+      const {onDisconnect, keepAlive} = hocOptions;
+      socket.__destructionCountdown = keepAlive < Number.MAX_SAFE_INTEGER ?
         setTimeout(() => {
           socket.disconnect();
           socketCluster.destroy(options);
-          const {onDisconnect} = hocOptions;
           if (onDisconnect) {
             onDisconnect(true, options, hocOptions, socket);
           }
-        }, hocOptions.keepAlive) :
-        () => true;
+        }, keepAlive)
+        // never close if set to Infinity
+        : true;
     }
 
     render() {
