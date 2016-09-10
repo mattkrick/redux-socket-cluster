@@ -138,16 +138,15 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
 
     componentWillMount() {
       const {socket, hocOptions, options} = this.state;
+      const {onConnect} = hocOptions;
+      if (onConnect) {
+        onConnect(options, hocOptions, socket);
+      }
       if (!socket.__destructionCountdown) {
         this.handleConnection();
         this.handleError();
         this.handleSubs();
         this.handleAuth();
-        const {onConnect} = hocOptions;
-        if (onConnect) {
-          onConnect(options, hocOptions, socket);
-        }
-        //
         socket.__destructionCountdown = true;
         return;
       }
@@ -224,6 +223,10 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
       }
 
       socket.on('connect', status => {
+        const {onConnect} = hocOptions;
+        if (onConnect) {
+          onConnect(options, hocOptions, socket);
+        }
         dispatch({
           type: CONNECT_SUCCESS,
           payload: {
