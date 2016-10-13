@@ -147,6 +147,7 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
         this.handleError();
         this.handleSubs();
         this.handleAuth();
+        // brand the socket in case the user uses this hoc more than once
         socket.__destructionCountdown = true;
         return;
       }
