@@ -113,8 +113,17 @@ export const socketClusterReducer = function(state = initialState, action) {
   }
 };
 
-// HOC
-export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
+// keep in outer context so we can check if it exists in the maintainSocket HOC
+let initialized = false;
+let instances = 0;
+let destructionId;
+let destroyer;
+let options;
+let hocOptions;
+let socket;
+const hocOptionsDefaults = {keepAlive: 15000};
+
+export const reduxSocket = (scOptions = {}, _hocOptions) => ComposedComponent =>
   class SocketClustered extends Component {
     static contextTypes = {
       store: React.PropTypes.object.isRequired
@@ -122,71 +131,63 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
 
     constructor(props, context) {
       super(props, context);
-      const {AuthEngine} = hocOptions;
-      const newOptions = AuthEngine ? {...options, authEngine: new AuthEngine(context.store)} : options;
-      const socketCluster = hocOptions.socketCluster;
-      this.state = {
-        options: newOptions,
-        socketCluster,
-        hocOptions: Object.assign({
-          keepAlive: 15000
-        }, hocOptions),
-        socket: socketCluster.connect(newOptions),
-        authTokenName: newOptions.authTokenName
+      const {AuthEngine, onDisconnect, socketCluster} = _hocOptions;
+      options = AuthEngine ? {...scOptions, authEngine: new AuthEngine(context.store)} : scOptions;
+      hocOptions = {...hocOptionsDefaults, ..._hocOptions};
+      socket = socketCluster.connect(options);
+      destroyer = () => {
+        socket.disconnect();
+        socketCluster.destroy(scOptions);
+        if (onDisconnect) {
+          onDisconnect(true, scOptions, _hocOptions, socket);
+        }
+        initialized = false;
       }
     }
 
     componentWillMount() {
-      const {socket, hocOptions, options} = this.state;
-      const {onConnect} = hocOptions;
-      if (onConnect) {
-        onConnect(options, hocOptions, socket);
-      }
-      if (!socket.__destructionCountdown) {
+      if (!initialized) {
+        // apply callback here so it happens on the same tick
+        const {onConnect} = hocOptions;
+        if (onConnect) {
+          onConnect(options, hocOptions, socket);
+        }
         this.handleConnection();
         this.handleError();
         this.handleSubs();
         this.handleAuth();
-        // brand the socket in case the user uses this hoc more than once
-        socket.__destructionCountdown = true;
-        return;
+        initialized = true;
+      } else if (destructionId) {
+        // a second instance of the HOC was used or the first is revisited
+        window.clearTimeout(destructionId);
+        destructionId = undefined;
       }
-      clearTimeout(socket.__destructionCountdown);
+      instances++;
     }
 
     componentWillUnmount() {
-      const {socket, socketCluster, hocOptions, options} = this.state;
-      const {onDisconnect, keepAlive} = hocOptions;
-      socket.__destructionCountdown = keepAlive < Number.MAX_SAFE_INTEGER ?
-        setTimeout(() => {
-          socket.disconnect();
-          socketCluster.destroy(options);
-          if (onDisconnect) {
-            onDisconnect(true, options, hocOptions, socket);
-          }
-        }, keepAlive)
-        // never close if set to Infinity
-        : true;
+      // if this is the last place the socket was used, try to destroy it
+      if (--instances === 0) {
+        const {keepAlive} = hocOptions;
+        if (Number.isFinite(keepAlive)) {
+          destructionId = window.setTimeout(destroyer, keepAlive)
+        }
+      }
     }
 
     render() {
-      return (
-        <ComposedComponent {...this.props}/>
-      );
+      return <ComposedComponent {...this.props}/>;
     }
 
     handleSubs() {
       const {dispatch} = this.context.store;
-      const {socket} = this.state;
       socket.on('subscribeStateChange', (channelName, oldState, newState) => {
         if (newState === PENDING) {
           dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
         }
       });
       socket.on('subscribeRequest', channelName => {
-        // delay the dispatch in case someone subs inside a render
         dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}});
-        // setTimeout(() => dispatch({type: SUBSCRIBE_REQUEST, payload: {channelName}}),0);
       });
       socket.on('subscribe', channelName => {
         dispatch({type: SUBSCRIBE_SUCCESS, payload: {channelName}});
@@ -205,8 +206,6 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
 
     handleConnection() {
       const {dispatch} = this.context.store;
-      const {socket, hocOptions, options} = this.state;
-
       // handle case where socket was opened before the HOC
       if (socket.state === OPEN) {
         if (!socket.id || socket.authState !== AUTHENTICATED) {
@@ -254,7 +253,6 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
 
     handleError() {
       const {dispatch} = this.context.store;
-      const {socket} = this.state;
       socket.on('error', error => {
         dispatch({type: CONNECT_ERROR, error: error.message});
       });
@@ -262,7 +260,7 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
 
     async handleAuth() {
       const {dispatch} = this.context.store;
-      const {socket, authTokenName} = this.state;
+      const {authTokenName} = options;
       socket.on('authenticate', authToken => {
         dispatch({type: AUTH_SUCCESS, payload: {authToken}});
       });
@@ -281,3 +279,26 @@ export const reduxSocket = (options = {}, hocOptions) => ComposedComponent =>
       }
     }
   };
+
+export const maintainSocket = ComposedComponent => {
+  return class MaintainSocket extends Component {
+    componentWillMount() {
+      window.clearTimeout(destructionId);
+      instances++;
+    }
+
+    componentWillUnmount() {
+      if (--instances === 0) {
+        const {keepAlive} = options;
+        if (Number.isFinite(keepAlive)) {
+          destructionId = window.setTimeout(destroyer, keepAlive)
+        }
+      }
+    }
+
+    render() {
+      return <ComposedComponent {...this.props}/>;
+    }
+  }
+};
+
