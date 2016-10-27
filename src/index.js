@@ -118,12 +118,12 @@ let initialized = false;
 let instances = 0;
 let destructionId;
 let destroyer;
-let options;
-let hocOptions;
+let options = {};
+let hocOptions = {};
 let socket;
 const hocOptionsDefaults = {keepAlive: 15000};
 
-export const reduxSocket = (scOptions = {}, _hocOptions) => ComposedComponent =>
+export const reduxSocket = (scOptions = {}, _hocOptions = {}) => ComposedComponent =>
   class SocketClustered extends Component {
     static contextTypes = {
       store: React.PropTypes.object.isRequired
