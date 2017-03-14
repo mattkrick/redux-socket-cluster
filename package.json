@@ -1,6 +1,6 @@
 {
   "name": "redux-socket-cluster",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "A socket-cluster state snatcher",
   "main": "lib/index",
   "scripts": {
@@ -49,10 +49,10 @@
     "rimraf": "^2.5.2"
   },
   "peerDependencies": {
-    "socketcluster-client": "^4.3.19"
+    "socketcluster-client": "^5.3.0"
   },
   "dependencies": {
     "es6-promisify": "^4.1.0",
-    "react": "^15.3.0"
+    "react": "^15.4.2"
   }
 }
