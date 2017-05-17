@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
 import promisify from 'es6-promisify';
+import PropTypes from 'prop-types';
 
 // constants
 const CLOSED = 'closed';
@@ -126,7 +127,7 @@ const hocOptionsDefaults = {keepAlive: 15000};
 export const reduxSocket = (scOptions = {}, _hocOptions = {}) => ComposedComponent =>
   class SocketClustered extends Component {
     static contextTypes = {
-      store: React.PropTypes.object.isRequired
+      store: PropTypes.object.isRequired
     };
 
     constructor(props, context) {
