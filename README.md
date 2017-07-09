@@ -50,7 +50,7 @@ If only certain components have websockets, stick this on those containers.
 The `options` are identical to what you'd pass in to the client socketCluster
 (http://socketcluster.io/#!/docs/api-socketcluster-client).
  
-`hocOptions` has the following properties:
+`hocOptions` can be a function that takes in props, or a simple object. If an object, it has the following properties:
 - `keepAlive`: The number of milliseconds to keep the socket connection alive after navigating away from the component.
 Defaults to 15 seconds.
 Say the client subs to 1000 items & accidently clicks a link that unmounts the component,

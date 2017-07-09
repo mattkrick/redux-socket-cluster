@@ -132,7 +132,9 @@ export const reduxSocket = (scOptions = {}, _hocOptions = {}) => ComposedCompone
 
     constructor(props, context) {
       super(props, context);
-      const {AuthEngine, onDisconnect, socketCluster} = _hocOptions;
+
+      const {AuthEngine, onDisconnect, socketCluster} = typeof _hocOptions === 'function' ?
+        _hocOptions(props) : _hocOptions;
       options = AuthEngine ? {...scOptions, authEngine: new AuthEngine(context.store)} : scOptions;
       hocOptions = {...hocOptionsDefaults, ..._hocOptions};
       socket = socketCluster.connect(options);
